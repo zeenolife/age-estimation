@@ -1,0 +1,334 @@
+import os
+import numpy as np
+import pandas as pd
+import cv2
+from scipy.io import loadmat
+import urllib
+import zipfile
+import tarfile
+import shutil
+import config
+
+
+downloader = urllib.URLopener()
+DATA_PATH = config.DATA_PATH
+VAL_SPLIT = config.VAL_SPLIT
+
+
+def download_and_extract_appa_real():
+
+    # Info
+    url = 'http://158.109.8.102/AppaRealAge/appa-real-release.zip'
+    save_name = os.path.join(DATA_PATH, 'appa-real-release.zip')
+    dir_name = os.path.join(DATA_PATH, 'appa-real-release')
+
+    print 'APPA-REAL dataset'
+
+    # Download
+    if not os.path.exists(save_name):
+        print 'Downloading...'
+        downloader.retrieve(url, save_name)
+    else:
+        print 'Dataset already exists'
+
+    # Extract
+    if not os.path.exists(dir_name):
+        print 'Extracting...'
+        with zipfile.ZipFile(save_name, 'r') as z:
+            z.extractall(path=DATA_PATH)
+    else:
+        print 'Already extracted'
+
+
+def extract_utk():
+
+    # Info
+    save_name = os.path.join(DATA_PATH, 'UTKFace.tar.gz')
+    dir_name = os.path.join(DATA_PATH, 'UTKFace')
+
+    print 'UTKFace dataset'
+
+    assert os.path.exists(save_name), 'Please download the UTKFace ' \
+                                      'drive.google.com/uc?id=0BxYys69jI14kYVM3aVhKS1VhRUk&export=download ' \
+                                      'and place it into data folder. The Google Drive has a messed API for ' \
+                                      'automatic downloading'
+
+    # Extract
+    if not os.path.exists(dir_name):
+        print 'Extracting...'
+        with tarfile.open(save_name, 'r') as t:
+            t.extractall(path=DATA_PATH)
+    else:
+        print 'Already extracted'
+
+
+def download_and_extract_imdb():
+
+    # Info
+    url = 'https://data.vision.ee.ethz.ch/cvl/rrothe/imdb-wiki/static/imdb_crop.tar'
+    save_name = os.path.join(DATA_PATH, 'imdb_crop.tar')
+    dir_name = os.path.join(DATA_PATH, 'imdb_crop')
+
+    print 'IMDB dataset'
+
+    # Download
+    if not os.path.exists(save_name):
+        print 'Downloading...'
+        downloader.retrieve(url, save_name)
+    else:
+        print 'Dataset already exists'
+
+    # Extract
+    if not os.path.exists(dir_name):
+        print 'Extracting...'
+        with tarfile.open(save_name, 'r') as t:
+            t.extractall(path=DATA_PATH)
+    else:
+        print 'Already extracted'
+
+
+def extract_sof():
+
+    # Info
+    save_name = os.path.join(DATA_PATH, 'original images.rar')
+    dir_name = os.path.join(DATA_PATH, 'original images')
+
+    print 'SoF dataset'
+
+    assert os.path.exists(save_name), 'Please download the SoF ' \
+                                      'drive.google.com/uc?id=0BwO0RMrZJCioaW5TdVJtOEtfYUk&export=download ' \
+                                      'and place it into data folder. The Google Drive has a messed API for ' \
+                                      'automatic downloading'
+
+    # Extract
+    assert os.path.exists(dir_name), 'Please extract the original images.rar folder. The directory must have name ' \
+                                     '"original images"'
+
+
+def prepare_class_dirs(dataset_name, train=True):
+
+    dataset_path = os.path.join(DATA_PATH, 'processed', dataset_name)
+    if not os.path.isdir(dataset_path):
+        os.mkdir(dataset_path)
+
+    # Choose the sets
+    sets = ['train', 'valid'] if train else ['test']
+
+    # Create class directories
+    for part in sets:
+
+        if not os.path.isdir(os.path.join(dataset_path, part)):
+            os.mkdir(os.path.join(dataset_path, part))
+
+        for i in range(0, 120):
+            target_path = os.path.join(dataset_path, part, str(i))
+            if not os.path.isdir(target_path):
+                os.mkdir(target_path)
+
+
+def prepare_appa_real():
+
+    print 'Preapring APPA-REAL dataset'
+
+    dir_name = os.path.join(DATA_PATH, 'appa-real-release')
+
+    # List of bad images
+    with open(os.path.join(DATA_PATH, 'appa-real-ignore-list.txt'), 'rb') as f:
+        ignore_imgs = set([_.strip() for _ in f.readlines()])
+
+    # Create processed dataset just in case
+    if not os.path.isdir(os.path.join(DATA_PATH, 'processed')):
+        os.mkdir(os.path.join(DATA_PATH, 'processed'))
+
+    # Create dataset specific folder
+    new_name = 'appa-real'
+    prepare_class_dirs(new_name)
+
+    # Process train and validation sets
+    for df_name in ['gt_avg_train.csv', 'gt_avg_valid.csv']:
+
+        df_name = os.path.join(dir_name, df_name)
+        df = pd.read_csv(df_name)
+
+        part = 'train' if 'train' in df_name else 'valid'
+        print 'Processing {} set'.format(part)
+
+        for index, row in df.iterrows():
+
+            # Ignore list
+            if row['file_name'] in ignore_imgs:
+                continue
+
+            img_name = row['file_name'] + '_face.jpg'
+            age = row['real_age']
+
+            # Restrict ages
+            if not 0 <= age < 120:
+                continue
+
+            # Copy the files
+            src = os.path.join(dir_name, part, img_name)
+            dst = os.path.join(DATA_PATH, 'processed', new_name, part, str(age), img_name)
+
+            shutil.copyfile(src, dst)
+
+    # Process test set
+    for df_name in ['gt_avg_test.csv']:
+
+        df_name = os.path.join(dir_name, df_name)
+        df = pd.read_csv(df_name)
+
+        # Set a seed for reproducibility
+        np.random.seed(42)
+
+        part = 'train' if VAL_SPLIT > np.random.rand() else 'valid'
+        print 'Processing test set'
+
+        for index, row in df.iterrows():
+
+            # Ignore list
+            if row['file_name'] in ignore_imgs:
+                continue
+
+            img_name = row['file_name'] + '_face.jpg'
+            age = row['real_age']
+
+            # Restrict ages
+            if not 0 <= age < 120:
+                continue
+
+            # Copy the files
+            src = os.path.join(dir_name, 'test', img_name)
+            dst = os.path.join(DATA_PATH, 'processed', new_name, part, str(age), img_name)
+
+            shutil.copyfile(src, dst)
+
+
+def prepare_utk():
+
+    print 'Preapring UTKFace dataset'
+
+    dir_name = os.path.join(DATA_PATH, 'UTKFace')
+
+    # Create processed dataset just in case
+    if not os.path.isdir(os.path.join(DATA_PATH, 'processed')):
+        os.mkdir(os.path.join(DATA_PATH, 'processed'))
+
+    # Create dataset specific folder
+    new_name = 'utk'
+    prepare_class_dirs(new_name)
+
+    # Set random seed for reproducibility
+    np.random.seed(42)
+
+    # Process sets
+    for img_name in os.listdir(dir_name):
+
+        # Ignore non-images
+        if not img_name.endswith('.jpg'):
+            continue
+
+        # Obtain image from file name
+        age = img_name.split('_')[0]
+
+        # Restrict ages
+        if not 0 <= int(age) < 120:
+            continue
+
+        # Decide randomly where the image goes
+        part = 'train' if VAL_SPLIT > np.random.rand() else 'valid'
+
+        # Copy the files
+        src = os.path.join(dir_name, img_name)
+        dst = os.path.join(DATA_PATH, 'processed', new_name, part, age, img_name)
+
+        shutil.copyfile(src, dst)
+
+
+def prepare_sof():
+
+    print 'Preapring SoF dataset'
+
+    dir_name = os.path.join(DATA_PATH, 'original images')
+
+    # Create processed dataset just in case
+    if not os.path.isdir(os.path.join(DATA_PATH, 'processed')):
+        os.mkdir(os.path.join(DATA_PATH, 'processed'))
+
+    # Create dataset specific folder
+    new_name = 'sof'
+    prepare_class_dirs(new_name, train=False)
+
+    # Load info
+    id2coors = {}
+    meta = loadmat(os.path.join(DATA_PATH, 'metadata.mat'))['metadata'][0]
+    for person in meta:
+        idx = person[1][0][0].tolist()[0]
+        x1, y1, w, h = person[14][0].astype(np.int32)
+        x2, y2 = x1 + w, y1 + h
+        id2coors[idx] = [x1, y1, x2, y2]
+
+    # Process sets
+    for img_name in os.listdir(dir_name):
+
+        # Ignore non-images
+        if not img_name.endswith('.jpg'):
+            continue
+
+        # Obtain image info and crop image
+        img_info = img_name.split('_')
+        idx = img_info[1]
+        age = img_info[3]
+        x1, y1, x2, y2 = id2coors[idx]
+        crop = cv2.imread(os.path.join(dir_name, img_name))[y1:y2, x1:x2]
+
+        # Restrict ages
+        if not 0 <= int(age) < 120:
+            continue
+
+        # Save the crop
+        dst = os.path.join(DATA_PATH, 'processed', new_name, 'test', age, img_name)
+
+        cv2.imwrite(dst, crop)
+
+
+def download_and_extract_all():
+    download_and_extract_appa_real()
+    extract_utk()
+    download_and_extract_imdb()
+    extract_sof()
+
+
+def prepare_all():
+    prepare_appa_real()
+    prepare_utk()
+    prepare_sof()
+
+
+def symlink_test_set():
+
+    # Absolute path to source test set
+    src = os.path.join(DATA_PATH, 'processed/sof/test')
+    src = os.path.realpath(src)
+
+    # According absolute paths to datasets
+    appa_real_dst = os.path.join(DATA_PATH, 'processed/appa-real/test')
+    appa_real_dst = os.path.realpath(appa_real_dst)
+
+    utk_dst = os.path.join(DATA_PATH, 'processed/utk/test')
+    utk_dst = os.path.realpath(utk_dst)
+
+    imdb_dst = os.path.join(DATA_PATH, 'processed/imdb/test')
+    imdb_dst = os.path.realpath(imdb_dst)
+
+    # Creating symbolic links
+    os.symlink(src, appa_real_dst)
+    os.symlink(src, utk_dst)
+    os.symlink(src, imdb_dst)
+
+
+if __name__ == '__main__':
+
+    download_and_extract_all()
+    prepare_all()
+    symlink_test_set()

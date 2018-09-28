@@ -1,0 +1,14 @@
+# Jupyter Notebook stuff
+.ipynb_checkpoints/
+*.ipynb
+
+# Data
+data/*
+!data/appa-real-ignore-list.txt
+!data/metadata.mat
+
+# Pycharm stuff
+.idea/
+
+# Python
+*.pyc
