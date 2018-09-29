@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import cv2
 from scipy.io import loadmat
+from datetime import datetime
 import urllib
 import zipfile
 import tarfile
@@ -245,6 +246,52 @@ def prepare_utk():
         shutil.copyfile(src, dst)
 
 
+def prepare_imdb():
+
+    print 'Preapring IMDB dataset'
+
+    dir_name = os.path.join(DATA_PATH, 'imdb_crop')
+
+    # Create processed dataset just in case
+    if not os.path.isdir(os.path.join(DATA_PATH, 'processed')):
+        os.mkdir(os.path.join(DATA_PATH, 'processed'))
+
+    # Create dataset specific folder
+    new_name = 'imdb'
+    prepare_class_dirs(new_name)
+
+    # Set random seed for reproducibility
+    np.random.seed(42)
+
+    # Obtain info from
+    meta = loadmat(os.path.join(dir_name, 'imdb.mat'))['imdb'][0][0]
+    dobs = meta['dob'][0]
+    takens = meta['photo_taken'][0]
+    paths = meta['full_path'][0]
+
+    # Process sets
+    for i in xrange(len(dobs)):
+
+        dob = dobs[i]
+        taken = takens[i]
+        path = paths[i].tolist()[0]
+        age = taken - datetime.fromordinal(max(int(dob) - 366, 1)).year
+        img_name = path.split('/')[1]
+
+        # Restrict ages
+        if not 0 <= age < 120:
+            continue
+
+        # Decide randomly where the image goes
+        part = 'train' if VAL_SPLIT > np.random.rand() else 'valid'
+
+        # Copy the files
+        src = os.path.join(dir_name, path)
+        dst = os.path.join(DATA_PATH, 'processed', new_name, part, str(age), img_name)
+
+        shutil.copyfile(src, dst)
+
+
 def prepare_sof():
 
     print 'Preapring SoF dataset'
@@ -302,6 +349,7 @@ def download_and_extract_all():
 def prepare_all():
     prepare_appa_real()
     prepare_utk()
+    prepare_imdb()
     prepare_sof()
 
 
