@@ -430,7 +430,7 @@ def prepare_sof():
 
     # Load info
     id2coors = {}
-    meta = loadmat(os.path.join(DATA_PATH, 'metadata.mat'))['metadata'][0]
+    meta = loadmat('./meta/metadata.mat')['metadata'][0]
     for person in meta:
         idx = person[1][0][0].tolist()[0]
         x1, y1, w, h = person[14][0].astype(np.int32)
