@@ -10,6 +10,7 @@ import tarfile
 import shutil
 import config
 import dlib
+from tqdm import tqdm
 
 
 detector = dlib.get_frontal_face_detector()
@@ -195,7 +196,7 @@ def prepare_appa_real():
     dir_name = os.path.join(DATA_PATH, 'appa-real-release')
 
     # List of bad images
-    with open(os.path.join(DATA_PATH, 'appa-real-ignore-list.txt'), 'rb') as f:
+    with open('./meta/appa-real-ignore-list.txt', 'rb') as f:
         ignore_imgs = set([_.strip() for _ in f.readlines()])
 
     # Create processed dataset just in case
@@ -213,12 +214,11 @@ def prepare_appa_real():
         df = pd.read_csv(df_name)
 
         part = 'train' if 'train' in df_name else 'valid'
-        if config.USE_ALL_DATA:
-            part = 'train'
+        part_dst = 'train' if config.USE_ALL_DATA else 'valid'
 
         print('Processing {} set'.format(part))
 
-        for index, row in df.iterrows():
+        for index, row in tqdm(df.iterrows(), total=df.shape[0]):
 
             # Ignore list
             if row['file_name'] in ignore_imgs:
@@ -233,7 +233,7 @@ def prepare_appa_real():
 
             # Copy the files
             src = os.path.join(dir_name, part, img_name)
-            dst = os.path.join(DATA_PATH, 'processed', new_name, part, str(age), img_name)
+            dst = os.path.join(DATA_PATH, 'processed', new_name, part_dst, str(age), img_name)
 
             if config.PHOTO_DIST == 'CU':
                 shutil.copyfile(src, dst)
@@ -258,7 +258,7 @@ def prepare_appa_real():
         part = 'train' if VAL_SPLIT > np.random.rand() else 'valid'
         print('Processing test set')
 
-        for index, row in df.iterrows():
+        for index, row in tqdm(df.iterrows(), total=df.shape[0]):
 
             # Ignore list
             if row['file_name'] in ignore_imgs:
@@ -306,9 +306,13 @@ def prepare_utk():
     for part in parts:
 
         dir_name = os.path.join(DATA_PATH, part)
-
+        print('Processing {}'.format(part))
         # Process sets
-        for img_name in os.listdir(dir_name):
+
+        img_names = os.listdir(dir_name)
+        for i in tqdm(range(len(img_names))):
+
+            img_name = img_names[i]
 
             # Ignore non-images
             if not img_name.endswith('.jpg'):
@@ -366,10 +370,10 @@ def prepare_imdb():
     takens = meta['photo_taken'][0]
     paths = meta['full_path'][0]
     face_scores = meta['face_score'][0]
-    second_face_scores = meta['second_face_score']
+    second_face_scores = meta['second_face_score'][0]
 
     # Process sets
-    for i in range(len(dobs)):
+    for i in tqdm(range(len(dobs))):
 
         dob = dobs[i]
         taken = takens[i]
@@ -448,9 +452,9 @@ def prepare_sof():
         img = cv2.imread(os.path.join(dir_name, img_name))
 
         if config.PHOTO_DIST == 'CU':
-            crop = img[y1:y2, x1:x2]
-        else:
             crop = imcrop(img, x1, y1, x2, y2)
+        else:
+            crop = img[y1:y2, x1:x2]
 
         # Restrict ages
         if not 0 <= int(age) < 120:
@@ -463,17 +467,27 @@ def prepare_sof():
 
 
 def download_and_extract_all():
+    print('Downloading and extracting files...')
     download_and_extract_appa_real()
+    print('\n')
     extract_utk()
+    print('\n')
     download_and_extract_imdb()
+    print('\n')
     extract_sof()
+    print('\n')
 
 
 def prepare_all():
+    print('Preparing datasets')
     prepare_appa_real()
+    print('\n')
     prepare_utk()
+    print('\n')
     prepare_imdb()
+    print('\n')
     prepare_sof()
+    print('\n')
 
 
 def symlink_test_set():
