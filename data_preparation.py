@@ -11,6 +11,7 @@ import shutil
 import config
 import dlib
 from tqdm import tqdm
+from PIL import Image
 
 
 detector = dlib.get_frontal_face_detector()
