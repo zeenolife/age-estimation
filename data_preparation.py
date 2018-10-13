@@ -204,8 +204,12 @@ def prepare_appa_real():
     if not os.path.isdir(os.path.join(DATA_PATH, 'processed')):
         os.mkdir(os.path.join(DATA_PATH, 'processed'))
 
-    # Create dataset specific folder
+    # Create dataset specific folder if does not exist
     new_name = 'appa-real'
+    if os.path.isdir(os.path.join(DATA_PATH, 'processed', new_name)):
+        print('APPA-REAL already preprocessed')
+        return
+
     prepare_class_dirs(new_name)
 
     # Process train and validation sets
@@ -295,8 +299,11 @@ def prepare_utk():
         os.mkdir(os.path.join(DATA_PATH, 'processed'))
 
     print('Preparing UTKFace dataset')
-    # Create dataset specific folder
+    # Create dataset specific folder if does not exist
     new_name = 'utk'
+    if os.path.isdir(os.path.join(DATA_PATH, 'processed', new_name)):
+        print('UTKFace already preprocessed')
+        return
     prepare_class_dirs(new_name)
 
     # Set random seed for reproducibility
@@ -358,8 +365,11 @@ def prepare_imdb():
     if not os.path.isdir(os.path.join(DATA_PATH, 'processed')):
         os.mkdir(os.path.join(DATA_PATH, 'processed'))
 
-    # Create dataset specific folder
+    # Create dataset specific folder if does not exist
     new_name = 'imdb'
+    if os.path.isdir(os.path.join(DATA_PATH, 'processed', new_name)):
+        print('IMDB already preprocessed')
+        return
     prepare_class_dirs(new_name)
 
     # Set random seed for reproducibility
@@ -476,7 +486,6 @@ def download_and_extract_all():
     download_and_extract_imdb()
     print('\n')
     extract_sof()
-    print('\n')
 
 
 def prepare_all():
@@ -488,7 +497,6 @@ def prepare_all():
     prepare_imdb()
     print('\n')
     prepare_sof()
-    print('\n')
 
 
 def clean_brokens():
@@ -516,18 +524,19 @@ def symlink_test_set():
     suffix = 'valid' if config.USE_ALL_DATA else 'test'
 
     appa_real_dst = os.path.join(DATA_PATH, 'processed/appa-real/', suffix)
-    appa_real_dst = os.path.realpath(appa_real_dst)
+    if not os.path.isdir(appa_real_dst):
+        appa_real_dst = os.path.realpath(appa_real_dst)
+        os.symlink(src, appa_real_dst)
 
     utk_dst = os.path.join(DATA_PATH, 'processed/utk/', suffix)
-    utk_dst = os.path.realpath(utk_dst)
+    if not os.path.isdir(utk_dst):
+        utk_dst = os.path.realpath(utk_dst)
+        os.symlink(src, utk_dst)
 
     imdb_dst = os.path.join(DATA_PATH, 'processed/imdb/', suffix)
-    imdb_dst = os.path.realpath(imdb_dst)
-
-    # Creating symbolic links
-    os.symlink(src, appa_real_dst)
-    os.symlink(src, utk_dst)
-    os.symlink(src, imdb_dst)
+    if not os.path.isdir(imdb_dst):
+        imdb_dst = os.path.realpath(imdb_dst)
+        os.symlink(src, imdb_dst)
 
 
 if __name__ == '__main__':
