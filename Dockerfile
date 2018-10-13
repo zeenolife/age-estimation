@@ -30,9 +30,5 @@ RUN conda install -c conda-forge opencv
 RUN apt-get update && apt-get install -y --no-install-recommends libgl1-mesa-glx
 
 RUN git clone https://github.com/zeenolife/age-estimation /age-estimation
-WORKDIR /age-estimation
-RUN python data_preparation.py
 
-RUN jupyter notebook --ip 0.0.0.0 --port 8888 --no-browser --allow-root
-
-ENTRYPOINT ["tail", "-f", "/dev/null"]
+ENTRYPOINT ["/age-estimation/exec.sh"]
