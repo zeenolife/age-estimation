@@ -490,6 +490,21 @@ def prepare_all():
     print('\n')
 
 
+def clean_brokens():
+
+    # Clean broken images
+    path = os.path.join(DATA_PATH, 'processed/')
+    for root, dirs, files in os.walk(path):
+        for f in files:
+            if f.endswith('.jpg'):
+                img_path = os.path.join(root, f)
+                try:
+                    Image.open(img_path).verify()
+                except OSError:
+                    print('Removing: {}'.format(img_path))
+                    os.remove(img_path)
+
+
 def symlink_test_set():
 
     # Absolute path to source test set
@@ -518,4 +533,5 @@ if __name__ == '__main__':
 
     download_and_extract_all()
     prepare_all()
+    clean_brokens()
     symlink_test_set()
