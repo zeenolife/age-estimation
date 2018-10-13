@@ -437,6 +437,9 @@ def prepare_sof():
 
     # Create dataset specific folder
     new_name = 'sof'
+    if os.path.isdir(os.path.join(DATA_PATH, 'processed', new_name)):
+        print('SOF already preprocessed')
+        return
     prepare_class_dirs(new_name, train=False)
 
     # Load info
@@ -478,7 +481,7 @@ def prepare_sof():
 
 
 def download_and_extract_all():
-    print('Downloading and extracting files...')
+    print('Downloading and extracting files...\n')
     download_and_extract_appa_real()
     print('\n')
     extract_utk()
@@ -489,7 +492,7 @@ def download_and_extract_all():
 
 
 def prepare_all():
-    print('Preparing datasets')
+    print('Preparing datasets...\n')
     prepare_appa_real()
     print('\n')
     prepare_utk()
@@ -500,7 +503,7 @@ def prepare_all():
 
 
 def clean_brokens():
-
+    print('Looking for broken images...')
     # Clean broken images
     path = os.path.join(DATA_PATH, 'processed/')
     for root, dirs, files in os.walk(path):
@@ -516,6 +519,8 @@ def clean_brokens():
 
 def symlink_test_set():
 
+    print('Creating symlinks...')
+
     # Absolute path to source test set
     src = os.path.join(DATA_PATH, 'processed/sof/test')
     src = os.path.realpath(src)
@@ -524,24 +529,30 @@ def symlink_test_set():
     suffix = 'valid' if config.USE_ALL_DATA else 'test'
 
     appa_real_dst = os.path.join(DATA_PATH, 'processed/appa-real/', suffix)
-    if not os.path.isdir(appa_real_dst):
-        appa_real_dst = os.path.realpath(appa_real_dst)
-        os.symlink(src, appa_real_dst)
+    if os.path.isdir(appa_real_dst):
+        os.remove(appa_real_dst)
+    appa_real_dst = os.path.realpath(appa_real_dst)
+    os.symlink(src, appa_real_dst)
 
     utk_dst = os.path.join(DATA_PATH, 'processed/utk/', suffix)
-    if not os.path.isdir(utk_dst):
-        utk_dst = os.path.realpath(utk_dst)
-        os.symlink(src, utk_dst)
+    if os.path.isdir(utk_dst):
+        os.remove(utk_dst)
+    utk_dst = os.path.realpath(utk_dst)
+    os.symlink(src, utk_dst)
 
     imdb_dst = os.path.join(DATA_PATH, 'processed/imdb/', suffix)
-    if not os.path.isdir(imdb_dst):
-        imdb_dst = os.path.realpath(imdb_dst)
-        os.symlink(src, imdb_dst)
+    if os.path.isdir(imdb_dst):
+        os.remove(imdb_dst)
+    imdb_dst = os.path.realpath(imdb_dst)
+    os.symlink(src, imdb_dst)
 
 
-if __name__ == '__main__':
-
+def prepare_data():
     download_and_extract_all()
     prepare_all()
     clean_brokens()
     symlink_test_set()
+
+
+if __name__ == '__main__':
+    prepare_data()
