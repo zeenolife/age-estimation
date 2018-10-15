@@ -352,7 +352,13 @@ def prepare_utk():
                 cv2.imwrite(dst, img)
 
             else:
-                shutil.copyfile(src, dst)
+                img = cv2.imread(src)
+                res = detect_face(img)
+                if res is None:
+                    continue
+
+                x1, y1, x2, y2 = res
+                cv2.imwrite(dst, img[y1:y2, x1:x2])
 
 
 def prepare_imdb():
